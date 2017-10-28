@@ -158,7 +158,7 @@ class Neo4jDriver(object):
 
         """
         config = current_app.config['GRAPHDB']
-        current_app.logger.debug(f'Graph DB Config: {config}')
+        current_app.logger.debug('Graph DB Config: {}'.format(config))
         driver = GraphDatabase.driver(
             config['uri'],
             auth=(config['user'], config['pass']),
