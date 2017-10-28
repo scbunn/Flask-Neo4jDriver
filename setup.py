@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name='Flask-Neo4jDriver',
-    version='0.1.1',
+    version='0.1.2',
     url='https://github.com/scbunn/flask-neo4jdriver',
     license='GPLv3',
     author='Stephen Bunn',
@@ -44,6 +44,11 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6'
     ]
+    keywords='flask neo4j database graph',
+    python_requires='>=2.7'
 )
