@@ -25,6 +25,7 @@ script:
     - python setup.py sdist
 
 deploy:
+    skip_cleanup: true
     - provider: script
       script: twine upload --skip-existing dist/*
       on:
