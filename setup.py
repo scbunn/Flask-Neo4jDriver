@@ -48,7 +48,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6'
-    ]
+    ],
     keywords='flask neo4j database graph',
-    python_requires='>=2.7'
+    python_requires='>=2.7',
 )
