@@ -3,8 +3,11 @@ python:
     - "2.7"
     - "3.5"
     - "3.6"
-    - "nightly"
+sudo: required
 services:
-    - neo4j
+    - docker
+before_install:
+    - docker pull neo4j:latest
+    - docker run -d -p 127.0.0.1:7687:7687 neo4j:latest
 script:
     - python setup.py test
