@@ -13,7 +13,7 @@ services:
 before_install:
     - docker pull neo4j:latest
     - docker run -d -p 127.0.0.1:7474:7474 -p 127.0.0.1:7687:7687 neo4j:latest
-    - sleep 10  # give Neo4J some time to start
+    - sleep 15  # give Neo4J some time to start
     - curl -v POST http://neo4j:neo4j@localhost:7474/user/neo4j/password -d"password=neo4j2"
     - curl -v POST http://neo4j:neo4j2@localhost:7474/user/neo4j/password -d"password=neo4j"
 
