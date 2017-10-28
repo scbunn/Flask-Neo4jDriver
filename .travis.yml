@@ -18,7 +18,7 @@ before_install:
     - curl -v POST http://neo4j:neo4j2@localhost:7474/user/neo4j/password -d"password=neo4j"
 
 install:
-    - pip install --user twine
+    - pip install twine
 
 script:
     - python setup.py test
@@ -27,3 +27,5 @@ script:
 deploy:
     - provider: script
       script: twine upload --skip-existing dist/*
+      on:
+          branch: develop
