@@ -96,7 +96,7 @@ def test_driver_connection_failed_with_bad_credentials(client, Driver,
     current_app.config['GRAPHDB'] = CIGraphCreds
     current_app.config['GRAPHDB']['user'] = 'not a real user'
     with pytest.raises(neo4j.exceptions.AuthError):
-        assert Driver.driver
+        assert Driver.driver.session.run("MATCH (n) RETURN n LIMIT 1")
 
 
 @pytest.mark.neo4
