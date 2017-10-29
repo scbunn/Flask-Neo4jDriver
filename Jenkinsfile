@@ -4,9 +4,6 @@ pipeline {
   environment {
     VENV = "/var/jenkins_home/virtualenvs/flask-neo4jdriver.${env.BUILD_NUMBER}"
     activate = ". ${env.VENV}/bin/activate"
-    GRAPHDB_URI = credentials('GRAPHDB_URI')
-    GRAPHDB_USER = credentials('GRAPHDB_USER')
-    GRAPHDB_PASS = credentials('GRAPHDB_PASS')
   }
 
   stages {
@@ -39,6 +36,11 @@ pipeline {
     }
 
     stage('Run Tests') {
+      environment {
+        GRAPHDB_URI = credentials('GRAPHDB_URI')
+        GRAPHDB_USER = credentials('GRAPHDB_USER')
+        GRAPHDB_PASS = credentials('GRAPHDB_PASS')
+      }
       steps {
         sh """#!/bin/bash
             ${env.activate}
