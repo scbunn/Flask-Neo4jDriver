@@ -4,6 +4,7 @@ This module defines default fixtures and common test functions.
 
 """
 import pytest
+import os
 from flask import Flask
 from flask.ext.neo4j import Neo4jDriver
 
@@ -65,3 +66,19 @@ def testclient(request):
     ctx.push()
     yield (client, request.param)
     ctx.pop()
+
+
+@pytest.fixture
+def CIGraphCreds():
+    data = {
+        'uri': os.getenv('GRAPHDB_URI', 'bolt://localhost:7687'),
+        'user': os.getenv('GRAPHDB_USER', 'neo4j'),
+        'pass': os.getenv('GRAPHDB_PASS', 'neo4j'),
+        'encrypted': True,
+        'trust': 2,
+        'max_con_lifetime': 300,
+        'max_con_pool_size': 100,
+        'lb': 0
+    }
+    return data
+
