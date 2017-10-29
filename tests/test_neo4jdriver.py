@@ -74,27 +74,34 @@ def test_neo4jdriver_direct_initialization():
 
 
 @pytest.mark.neo4j
-def test_driver_can_connect_successfully(client, Driver):
+def test_driver_can_connect_successfully(client, Driver, CIGraphCreds):
     """Test the driver can initiate a connection.
 
     Assert the driver is able to initiate communication to the neo4j server.
 
     """
+    current_app.config['GRAPHDB'] = CIGraphCreds
     assert Driver.create_driver()  # if a valid object returned, we connected
 
 
-def test_driver_connection_failed_with_bad_credentials(client, Driver):
+@pytest.mark.neo4j
+def test_driver_connection_failed_with_bad_credentials(client, Driver,
+                                                       CIGraphCreds):
     """Test the driver raises exception on unsuccessful connection.
 
     Assert an authentication exception is raised if the database credentials
     are invalid.
 
     """
+    current_app.config['GRAPHDB'] = CIGraphCreds
     current_app.config['GRAPHDB']['user'] = 'not a real user'
+    current_app.config['GRAPHDB']['pass'] = 'foobar'
     with pytest.raises(neo4j.exceptions.AuthError):
-        assert Driver.driver
+        with Driver.session as session:
+            session.run("MATCH (n) RETURN n LIMIT 1")
 
 
+@pytest.mark.neo4
 def test_driver_connection_cant_reach_server(client, Driver):
     """Test driver is not created if the server can't be reached.
 
@@ -106,23 +113,27 @@ def test_driver_connection_cant_reach_server(client, Driver):
         assert Driver.driver
 
 
-def test_driver_can_create_a_session(client, Driver):
+@pytest.mark.neo4j
+def test_driver_can_create_a_session(client, Driver, CIGraphCreds):
     """Test that a bound driver can create a session.
 
     Assert that a successfully connected driver is able to create a new
     session.
 
     """
+    current_app.config['GRAPHDB'] = CIGraphCreds
     session = Driver.session
     assert isinstance(session, neo4j.v1.session.BoltSession)
 
 
-def test_driver_can_execute_cypher(client, Driver):
+@pytest.mark.neo4j
+def test_driver_can_execute_cypher(client, Driver, CIGraphCreds):
     """Test that a bound driver can execute cypher.
 
     Assert that a successfully connected driver can execute cypher.
 
     """
+    current_app.config['GRAPHDB'] = CIGraphCreds
     with Driver.session as session:
         session.run("MERGE (node:TestNode { name: $name, p1: $prop })",
                     name="CI Test", prop="Foobar")
