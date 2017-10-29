@@ -71,7 +71,7 @@ def testclient(request):
 @pytest.fixture
 def CIGraphCreds():
     data = {
-        'uri': os.getenv('GRAPHDB_URI', 'bolt://localhost:7487'),
+        'uri': os.getenv('GRAPHDB_URI', 'bolt://localhost:7687'),
         'user': os.getenv('GRAPHDB_USER', 'neo4j'),
         'pass': os.getenv('GRAPHDB_PASS', 'neo4j'),
         'encrypted': True,
