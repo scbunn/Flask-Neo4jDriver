@@ -56,6 +56,7 @@ pipeline {
       steps {
         sh """#!/bin/bash
             docker rm -f "neo4j.${BUILD_NUMBER}"
+        """
       }
     }
   }
@@ -63,7 +64,7 @@ pipeline {
     always {
       junit "results/junit.xml"
       sh """
-          rm -rf "${env.VENV}"
+      rm -rf "${env.VENV}"
       """
     }
     failure {
