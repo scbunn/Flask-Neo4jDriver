@@ -85,13 +85,15 @@ def test_driver_can_connect_successfully(client, Driver, CIGraphCreds):
 
 
 @pytest.mark.neo4j
-def test_driver_connection_failed_with_bad_credentials(client, Driver):
+def test_driver_connection_failed_with_bad_credentials(client, Driver,
+                                                       CIGraphCreds):
     """Test the driver raises exception on unsuccessful connection.
 
     Assert an authentication exception is raised if the database credentials
     are invalid.
 
     """
+    current_app.config['GRAPHDB'] = CIGraphCreds
     current_app.config['GRAPHDB']['user'] = 'not a real user'
     with pytest.raises(neo4j.exceptions.AuthError):
         assert Driver.driver
