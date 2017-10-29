@@ -62,7 +62,7 @@ pipeline {
   post {
     always {
       junit "results/junit.xml"
-      sh """#!/bin/bash
+      sh """
           rm -rf "${env.VENV}"
       """
     }
