@@ -2,7 +2,12 @@ Flask-Neo4jDriver
 =================
 
 Flask-Neo4jDriver is a flask extension that provides integration with the 
-official neo4j python drivers.  
+official neo4j python drivers.
+
+Flask-Neo4jDriver > 0.2.0 requires `python 3`_.  Experimental graph mapping
+models are introduced in version 0.2.0.
+
+.. _python 3: https://docs.python.org/3/
 
 Introduction
 ------------
