@@ -16,6 +16,7 @@ the python driver.
 """
 from neo4j.v1 import GraphDatabase, TRUST_ALL_CERTIFICATES
 from flask import current_app
+from .model import Node, Query
 
 # import the correct stack depending on the version of Flask running.
 # > 0.9 : _app_ctx_stack
@@ -76,6 +77,8 @@ class Neo4jDriver(object):
 
         """
         self.app = app
+        self.Node = Node
+        self.Query = Query
         if app is not None:
             self.init_app(app)
 
@@ -100,6 +103,9 @@ class Neo4jDriver(object):
             'max_con_pool_size': 100,
             'lb': 0  # Least connected
         })
+
+        # Initialize the Query class with our db
+        self.Query.db = self
 
         # use newstyle teardown_appcontext if possible
         if hasattr(app, 'teardown_appcontext'):

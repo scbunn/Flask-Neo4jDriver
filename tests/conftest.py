@@ -11,6 +11,7 @@ from flask.ext.neo4j import Neo4jDriver
 
 db = Neo4jDriver()
 
+
 def create_app():
     """Application factory to create a new flask app."""
     app = Flask(__name__)
@@ -81,4 +82,3 @@ def CIGraphCreds():
         'lb': 0
     }
     return data
-

@@ -36,6 +36,7 @@ setup(
         'pytest-cov',
         'pytest-spec',
         'pytest-flask',
+        'Faker'
     ],
     classifiers=[
         'Environment :: Web Environment',
