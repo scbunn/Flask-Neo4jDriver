@@ -6,7 +6,7 @@ This module contains unit tests for Flask-Neo4jDriver Validators.
 import pytest
 import sys
 from faker import Faker
-from flask_neo4j.validator import (Validator, Integer, String)
+from flask_neo4j.validator import (Validator, Integer, String, Float, UUID)
 
 fake = Faker()
 try:  # Python 2
@@ -198,3 +198,98 @@ def test_string_validator_set_hook():
     with pytest.raises(TypeError) as err:
         t.test = 1
     assert 'Expected 1 to be a string; got int instead' in str(err.value)
+
+
+def test_float_validator_defaults():
+    """Test default `Float` validator attributes."""
+    f = Float()
+    assert f.name is None
+    assert f.positive is False
+
+
+def test_float_validator_init_value_assignment():
+    """Test that the `Float` validator can accept values at instantiation."""
+    f = Float(name='test', positive=True)
+    assert f.name == 'test'
+    assert f.positive is True
+
+
+@pytest.mark.parametrize("value", [
+    0.00001,
+    3.14,
+    -0.0001,
+    -1.0,
+    float('inf')
+])
+def test_float_validator_accepts_valid_floats(value):
+    """Test the `Float` validator accepts valid floating point values."""
+    f = Float()
+    f.validate(value)
+
+
+@pytest.mark.parametrize("value", ['0.0', 0, 1, intmax])
+def test_float_validator_fails_with_non_floats(value):
+    """Test `Float` validator throws an exception when not a float."""
+    f = Float()
+    with pytest.raises(TypeError) as err:
+        f.validate(value)
+    assert 'Expected {} to be a float'.format(value) in str(err.value)
+
+
+def test_float_positive_value_flag():
+    """Test `Float` rejects negative values when `positive` flag enabled."""
+    f = Float(positive=True)
+    with pytest.raises(TypeError) as err:
+        f.validate(-0.1)
+    assert 'Expected -0.1 to be positive' in str(err.value)
+
+
+def test_uuid_init_default_values():
+    """Test default attributes for `UUID` validator."""
+    u = UUID()
+    assert u.name is None
+    assert u.func.__name__ == 'uuid4'
+    assert callable(u.func)
+
+
+def test_uuid_init_value_assignment():
+    """Test `UUID` validator `__init__` value assignment."""
+    u = UUID(name='test', func=lambda: 'unique')
+    assert u.name == 'test'
+    assert callable(u.func)
+    assert u.func.__name__ == '<lambda>'
+
+
+def test_uuid_returns_a_unique_id_if_not_assigned():
+    """Test that `UUID` will return a unique id if not already assigned."""
+    class MyTest(object):
+        uid = UUID()
+    test = MyTest()
+    assert len(str(test.uid)) == 36
+
+
+def test_uuid_returns_same_value_once_assigned():
+    """Test that `UUID` returns consist identifier once assigned."""
+    class MyTest(object):
+        uid = UUID()
+    test = MyTest()
+    test.uid
+    uid = test.uid
+    assert uid == test.uid
+
+
+def test_uuid_accepts_uid_prior_to_generation():
+    """Test that a value can be assigned to a `UUID`."""
+    class MyTest(object):
+        uid = UUID()
+    test = MyTest()
+    test.uid = 123
+    assert test.uid == 123
+
+
+def test_uuid_accepts_custom_generation_function():
+    """Test that a custom generation function can be assigned."""
+    class MyTest(object):
+        uid = UUID(func=lambda: 'unique')
+    test = MyTest()
+    assert test.uid == 'unique'
