@@ -50,7 +50,6 @@ class Validator(object):
         Override set to validate the value of an attribute before setting it.
 
         """
-        print(f'calling validate with {value}')
         self.validate(value)
         instance.__dict__[self.name] = value
 

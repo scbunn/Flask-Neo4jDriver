@@ -57,7 +57,7 @@ class Query(object):
         if limit:
             query += 'LIMIT {}'.format(limit)
 
-        print(f'Query:\n{query}')
+        logger.debug('Query: {}'.format(query))
         try:
             with Query.db.session as session:
                 records = session.run(query)
@@ -168,13 +168,11 @@ class Node(metaclass=ResourceMeta):
 
         """
         with Node.query.db.session as session:
-            print(f'Trying to save {self}')
             if not properties:
                 properties = self.__dict__
-            print(f'Properties: {properties}')
             label = self.__class__.__name__
             query = """MERGE (a:{label} {{ uid: $uid }})
                        SET a += $properties
                     """.format(label=label)
-            print(f'query:\n{query}')
+            logger.debug('Query: {}'.format(query))
             session.run(query, uid=self.uid, properties=properties)
