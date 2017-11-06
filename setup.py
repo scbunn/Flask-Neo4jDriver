@@ -8,12 +8,14 @@ Flask extension providing integration with the official Neo4j python driver.
 import os
 from setuptools import setup
 
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+
 setup(
     name='Flask-Neo4jDriver',
-    version='0.1.2',
+    version='0.2.0',
     url='https://github.com/scbunn/flask-neo4jdriver',
     license='GPLv3',
     author='Stephen Bunn',
@@ -36,6 +38,7 @@ setup(
         'pytest-cov',
         'pytest-spec',
         'pytest-flask',
+        'Faker'
     ],
     classifiers=[
         'Environment :: Web Environment',
@@ -45,10 +48,9 @@ setup(
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6'
     ],
     keywords='flask neo4j database graph',
-    python_requires='>=2.7',
+    python_requires='>=3',
 )
