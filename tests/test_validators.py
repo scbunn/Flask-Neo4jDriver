@@ -248,7 +248,6 @@ def test_uuid_init_default_values():
     """Test default attributes for `UUID` validator."""
     u = UUID()
     assert u.name is None
-    assert u.func.__name__ == 'uuid4'
     assert callable(u.func)
 
 
@@ -257,7 +256,6 @@ def test_uuid_init_value_assignment():
     u = UUID(name='test', func=lambda: 'unique')
     assert u.name == 'test'
     assert callable(u.func)
-    assert u.func.__name__ == '<lambda>'
 
 
 def test_uuid_returns_a_unique_id_if_not_assigned():

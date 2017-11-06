@@ -198,7 +198,7 @@ class UUID(Validator):
         obj.uid = '123'    # overwrites the uid with a custom value
 
     """
-    def __init__(self, name=None, func=uuid.uuid4):
+    def __init__(self, name=None, func=lambda: str(uuid.uuid4())):
         """Initialize the validator.
 
         note: This validator does no type conversion on the return value from
