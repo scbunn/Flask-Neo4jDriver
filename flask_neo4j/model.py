@@ -8,11 +8,10 @@ import logging
 import neo4j.exceptions
 from flask import abort
 from .exceptions import CypherError, NodeNotFound
-from .validator import Validator, Integer
+from .validator import Validator, Integer, UUID
 
 
 logger = logging.getLogger(__name__)
-
 
 
 class Query(object):
@@ -134,7 +133,26 @@ class Node(metaclass=ResourceMeta):
     attribute with an alternative class.
     """
     query = Query()
-    id = Integer(positive=True)
+    id = Integer(positive=True)  # Id from the graph db
+    uid = UUID()                 # internal tracking id
+
+    def __init__(self):
+        """Base node initialization.
+
+        Initialize a base node.  Here we set some default attributes of all
+        children.
+
+        Attributes:
+            on_create: If defined, will be added to MERGE ON CREATE
+            on_match: If defined, will be added to MERGE ON MATCH
+
+            see the `save()` implementation for more information about the
+            `on_create` and `on_merge` attributes.
+
+        """
+        self._attributes.update({'on_create', 'on_match'})
+        self.on_create = None
+        self.on_match = None
 
     def __setattr__(self, name, value):
         """Intercept setattr.
@@ -161,18 +179,47 @@ class Node(metaclass=ResourceMeta):
             return models[label]
         return Node
 
-    def save(self, merge=True, properties=None):
+    @property
+    def properties(self):
+        """Return a dict of properties.
+
+        Returns a dictionary of properties that can be saved to the graph db.
+
+        """
+        return {k: v for k, v in self.__dict__.items()
+                if not k.startswith('on') and k != 'id'}
+
+    def save(self, merge=True):
         """Commit model to the database.
 
         Serialize the model to the graph database.
 
+        Args:
+            :param merge: flag to determine if save should merge or create
+
+        Raises:
+            neo4j.exceptions.ConstraintError: if a constraint is violated.
+            neo4j.exceptions.CypherSyntaxError: if on_* breaks cypher
+
         """
         with Node.query.db.session as session:
-            if not properties:
-                properties = self.__dict__
+            self.uid
+            properties = self.properties
             label = self.__class__.__name__
-            query = """MERGE (a:{label} {{ uid: $uid }})
-                       SET a += $properties
-                    """.format(label=label)
+            if not merge:
+                query = """
+                CREATE (node:{label} {{ uid: $uid }})
+                SET node += $properties
+                """.format(label=label)
+            else:
+                query = """
+                MERGE (node:{label} {{ uid: $uid }})
+                """.format(label=label)
+                if self.on_create:
+                    query += "ON CREATE SET {}".format(self.on_create)
+                if self.on_match:
+                    query += "ON MATCH SET {}".format(self.on_match)
+                query += "\nSET node += $properties"
             logger.debug('Query: {}'.format(query))
+            print(f'Query: {query}')
             session.run(query, uid=self.uid, properties=properties)
