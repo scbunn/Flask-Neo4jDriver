@@ -1,7 +1,7 @@
 """Neo4j Driver Model.
 
-This module defines the Node and Relationship models that can be used as a type
-of ORM for Neo4j.
+This module contains the classes and functions that make up the
+Flask-Neo4jDriver model system.
 
 """
 import logging
@@ -127,10 +127,54 @@ class Node(metaclass=ResourceMeta):
         class MyNode(db.Node):
             ... # Attributes / Validators
 
-    The base node class provides a :class:`Query` object used to assist with
-    the interaction of nodes and relationships within the graph database.  It
-    is possible to overwrite the `Query` object by updating the `query`
-    attribute with an alternative class.
+    The :class:`Node` maps class :class:`Property` objects to neo4j properties.
+    Properties are stored as class attributes and their primary purpose is to
+    preform validation on input values; however, not all properties preform
+    input validation -- such as the :class:`UUID` property.
+
+    There are a few default properties that exist on the base node.
+
+    Default Properties:
+
+        `query`: An instance of a :class:`Query` object.  The query instance
+            can be replaced with a child of :class:`Query`.
+        `id`: An instance of a :class:`Integer` property.  This id matches the
+            id from a node in the graph database. It is *not* safe to use this
+            value in your application.
+        `uid`: An instance of a :class:`UUID` property.  This is the unique
+            id that is assigned to the node and used internally by the model
+            system.  It is safe to use this value in your application.
+
+    In addition to the default properties, there are some instance level
+    attributes that control aspects of the operation of the :class:`Node`.  In
+    most cases, the defaults are fine.
+
+    Default Attributes:
+
+        `_CYPHER_ON_CREATE`: This attribute is used to set properties on nodes
+            when using a `MERGE` operation and the node does not exist.
+        `_CYPHER_ON_MATCH`: This attribute is used to set properties on nodes
+            when using a `MERGE` operation and the node already exists.
+
+        Example::
+
+            MyNode(Node):
+                def __init__(self):
+                    super().__init__()
+                    self._CYPHER_ON_MATCH = "node.updated = timestamp()"
+                    self._CYPHER_ON_CREATE = "node.created = timestamp()"
+
+        This would result in the following cypher query being executed when the
+        node commits its data to the database::
+
+            MERGE (node:Node {uid: 123})
+            ON CREATE SET node.created = timestamp()
+            ON MATCH SET node.updated = timestamp()
+            RETURN node
+
+        When a :class:`Node` commits data, it always uses `node` as the
+        identifier. `ON_CREATE` and `ON_MATCH` can be a comma delimited list.
+
     """
     query = Query()
     id = Integer(positive=True)  # Id from the graph db
@@ -142,17 +186,16 @@ class Node(metaclass=ResourceMeta):
         Initialize a base node.  Here we set some default attributes of all
         children.
 
-        Attributes:
-            on_create: If defined, will be added to MERGE ON CREATE
-            on_match: If defined, will be added to MERGE ON MATCH
-
-            see the `save()` implementation for more information about the
-            `on_create` and `on_merge` attributes.
-
         """
-        self._attributes.update({'on_create', 'on_match'})
-        self.on_create = None
-        self.on_match = None
+
+        # Add some attributes that are outside of normal operations
+        # If the attribute is not part of this set, the class will reject
+        # its assignment
+        self._attributes.update({
+            '_CYPHER_ON_CREATE',   # Used for MERGE ... ON CREATE
+            '_CYPHER_ON_MATCH',    # Used for MERGE ... ON MATCH
+            '_LABEL'               # Used to overwrite label of node
+        })
 
     def __setattr__(self, name, value):
         """Intercept setattr.
@@ -165,6 +208,12 @@ class Node(metaclass=ResourceMeta):
                 '{} has not defined attribute {}'.format(
                     self.__class__.__name__, name))
         super().__setattr__(name, value)
+
+    def __str__(self):
+        return '<{}: {}>'.format(self.label, self.uid)
+
+    def __repr__(self):
+        return '<{}: {}; {}>'.format(self.label, self.uid, self.properties)
 
     @classmethod
     def node_by_label(cls, label):
@@ -179,6 +228,49 @@ class Node(metaclass=ResourceMeta):
             return models[label]
         return Node
 
+    @classmethod
+    def from_dict(cls, data):
+        """Construct a new :class:`Node` from a dictionary.
+
+        Constructs a new node from the passed dictionary. The type of node
+        created is based on the name of the invoking class or `_LABEL`.
+
+        """
+        if not isinstance(data, dict):
+            raise TypeError('from_dict requires a dictionary')
+
+        if hasattr(cls, "_LABEL"):
+            label = cls._LABEL
+        else:
+            label = cls.__name__
+        print(f'looking for a class with label: {label}')
+        node = Node.node_by_label(label)()
+        node.__dict__.update(data)
+        return node
+
+    def to_dict(self):
+        """Return a dictionary structure representing this model.
+
+        Returns a dictionary representation of the object.  If the caller is
+        returning a `JSON` object and wants to filter the properties returned,
+        then override this method.
+
+        """
+        self.uid  # ensure the uid is set
+        return {self.label: self.properties}
+
+    @property
+    def label(self):
+        """Return the label to use for the node.
+
+        The default is to return the name of the class.  This can be
+        overwritten by assigning a value to `_LABEL`
+
+        """
+        if hasattr(self, '_LABEL'):
+            return self._LABEL
+        return self.__class__.__name__
+
     @property
     def properties(self):
         """Return a dict of properties.
@@ -187,7 +279,44 @@ class Node(metaclass=ResourceMeta):
 
         """
         return {k: v for k, v in self.__dict__.items()
-                if not k.startswith('on') and k != 'id'}
+                if not k.startswith('_') and k != 'id'}
+
+    def _merge_node(self):
+        """Commit model to the database by merge.
+
+        Serialize this model to the database using a `MERGE` operation.
+
+        """
+        logger.debug("Merging model to the database: {}".format(self))
+
+        # Base query
+        query = [
+            "MERGE (node:{label} {{uid: $uid}})".format(label=self.label),
+            "SET node += $properties",
+        ]
+
+        # Add ON_CREATE/ON_MATCH if requested
+        if hasattr(self, "_CYPHER_ON_CREATE"):
+            query.insert(1, "ON CREATE SET {}".format(self._CYPHER_ON_CREATE))
+        if hasattr(self, "_CYPHER_ON_MATCH"):
+            query.insert(1, "ON MATCH SET {}".format(self._CYPHER_ON_MATCH))
+
+        # Serialize the model
+        logger.debug("Merge Query: {}".format('\n'.join(query)))
+        with self.query.db.session as tx:
+            tx.run('\n'.join(query), uid=self.uid, properties=self.properties)
+
+    def _create_node(self):
+        """Commit model to the database by create.
+
+        Serialize this model to the database using a `CREATE` operation.
+
+        """
+        logger.debug("Create new node: {}".format(self))
+        query = "CREATE (node:{label} $properties)".format(label=self.label)
+        with self.query.db.session as tx:
+            logger.debug("Create query: {}".format(query))
+            tx.run(query, properties=self.properties)
 
     def save(self, merge=True):
         """Commit model to the database.
@@ -199,27 +328,10 @@ class Node(metaclass=ResourceMeta):
 
         Raises:
             neo4j.exceptions.ConstraintError: if a constraint is violated.
-            neo4j.exceptions.CypherSyntaxError: if on_* breaks cypher
+            neo4j.exceptions.CypherSyntaxError: if cypher breaks.
 
         """
-        with Node.query.db.session as session:
-            self.uid
-            properties = self.properties
-            label = self.__class__.__name__
-            if not merge:
-                query = """
-                CREATE (node:{label} {{ uid: $uid }})
-                SET node += $properties
-                """.format(label=label)
-            else:
-                query = """
-                MERGE (node:{label} {{ uid: $uid }})
-                """.format(label=label)
-                if self.on_create:
-                    query += "ON CREATE SET {}".format(self.on_create)
-                if self.on_match:
-                    query += "ON MATCH SET {}".format(self.on_match)
-                query += "\nSET node += $properties"
-            logger.debug('Query: {}'.format(query))
-            print(f'Query: {query}')
-            session.run(query, uid=self.uid, properties=properties)
+        if merge:
+            self._merge_node()
+        else:
+            self._create_node()
