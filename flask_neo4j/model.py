@@ -6,8 +6,7 @@ Flask-Neo4jDriver model system.
 """
 import logging
 import neo4j.exceptions
-from flask import abort
-from .exceptions import CypherError, ResourceNotFound
+from .exceptions import CypherError, ResourceNotFound, NodeNotFound
 from .validator import Validator, Integer, UUID
 
 
@@ -96,7 +95,8 @@ class Query(object):
         """
         results = self.execute(cypher)
         if not results:
-            raise NodeNotFound(f'No nodes from query: {cypher}')
+            raise NodeNotFound('No nodes from query: {cypher}'.format(
+                cypher=cypher))
         unique_nodes = set()
         nodes = []
         for result in results:  # Get a set of all unique nodes returned
@@ -277,7 +277,6 @@ class Node(metaclass=ResourceMeta):
             label = cls._LABEL
         else:
             label = cls.__name__
-        print(f'looking for a class with label: {label}')
         node = Node.node_by_label(label)()
         node.__dict__.update(data)
         return node
