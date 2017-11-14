@@ -139,3 +139,21 @@ Contributing
 
 Have features you want to add? Fork this repository and send me a pull 
 request.  Please make sure you include test cases for any additional features.
+
+Looking for something to do? Here is of open TODO items.
+
+- Move Validators to Properties
+- implement equality for Nodes (i.e. Node1 == Node2)
+- implement hash for Node
+- Fully implement logger
+- Implement the Relationship model.
+  - should be simple: r = Relationship(node1, 'LINKED', node2)
+  - r.save()
+- Implement Query
+  - First model is simple. Just an execute() method that supports pagination.
+  - implement other useful methods...
+
+I'm currently not trying to implement a fully OGM type of setup with the model
+system.  I expect the application to still have to execute raw cypher for
+most queries.  The model system is intended to help, primarily, with the 
+lifecycle of Nodes.

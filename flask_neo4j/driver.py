@@ -78,7 +78,7 @@ class Neo4jDriver(object):
         """
         self.app = app
         self.Node = Node
-        self.Query = Query
+        self.query = Query
         if app is not None:
             self.init_app(app)
 
@@ -105,7 +105,7 @@ class Neo4jDriver(object):
         })
 
         # Initialize the Query class with our db
-        self.Query.db = self
+        self.query.db = self
 
         # use newstyle teardown_appcontext if possible
         if hasattr(app, 'teardown_appcontext'):
