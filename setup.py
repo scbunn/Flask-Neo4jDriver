@@ -15,7 +15,7 @@ def read(fname):
 
 setup(
     name='Flask-Neo4jDriver',
-    version='0.2.0',
+    version='0.2.1',
     url='https://github.com/scbunn/flask-neo4jdriver',
     license='GPLv3',
     author='Stephen Bunn',

@@ -16,10 +16,15 @@ import neo4j.exceptions
 class CypherError(neo4j.exceptions.CypherError):
     pass
 
-class NodeNotFound(Exception):
+
+class ResourceNotFound(Exception):
 
     def __init__(self, message, status_code=404, payload=None):
         Exception.__init__(self)
         self.message = message
         self.status_code = status_code
         self.payload = payload
+
+
+class NodeNotFound(ResourceNotFound):
+    pass

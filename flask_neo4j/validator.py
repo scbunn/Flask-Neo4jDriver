@@ -4,6 +4,7 @@ This module contains a set of default validators that can be used to richly
 express attributes on application models.
 
 """
+import uuid
 
 
 class Validator(object):
@@ -154,7 +155,7 @@ class Float(Validator):
 
     """
 
-    def __init__(self, name, positive=False):
+    def __init__(self, name=None, positive=False):
         """Initialize the validator.
 
         Args:
@@ -172,3 +173,57 @@ class Float(Validator):
             raise TypeError(
                 'Expected {} to be a float; got {} instead.'.format(
                     value, value.__class__.__name__))
+
+        if self.positive:
+            if value < 0:
+                raise TypeError(
+                   'Expected {} to be positive.'.format(value))
+
+
+class UUID(Validator):
+    """UUID Validator.
+
+    The UUID validator is a special validator.  The UUID validator operates as
+    as UUID generator.  When this validator is used it ensures a unique UUID
+    is returned.  If the validator is not provided a function to generate a
+    unique identified, then `uuid.uuid4()` will be used.
+
+    Example::
+        class MyModel(object):
+            uid = UUID(func=uuid.uuid4)
+
+        obj = MyModel()
+        print(f'obj.uid')  # returns a unique id
+        print(f'obj.uid')  # returns the same identified
+        obj.uid = '123'    # overwrites the uid with a custom value
+
+    """
+    def __init__(self, name=None, func=lambda: str(uuid.uuid4())):
+        """Initialize the validator.
+
+        note: This validator does no type conversion on the return value from
+        the `func` function.
+
+        Args:
+            :param name: Name of the attribute; see :class:`Validator`
+            :param funct: Function to generate a unique identifier
+
+        """
+        self.name = name
+        self.func = func
+
+    def __get__(self, instance, cls):
+        """Override `Validator.__get__`
+
+        Returns the value stored in the attribute if it exists; otherwise a
+        new unique identifier is generated, stored, and then returned.
+
+        """
+        try:
+            return instance.__dict__[self.name]
+        except KeyError:
+            instance.__dict__[self.name] = self.func()
+        return instance.__dict__[self.name]
+
+    def validate(self, value):
+        pass
