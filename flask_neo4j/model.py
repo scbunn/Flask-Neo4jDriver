@@ -7,7 +7,7 @@ Flask-Neo4jDriver model system.
 import logging
 import neo4j.exceptions
 from flask import abort
-from .exceptions import CypherError, NodeNotFound
+from .exceptions import CypherError, ResourceNotFound
 from .validator import Validator, Integer, UUID
 
 
@@ -17,66 +17,100 @@ logger = logging.getLogger(__name__)
 class Query(object):
     """Query Class.
 
-    The query class is the core query component of the Node.
+    The query class is the core query component of the Node.  The query class
+    is the primary interface for client interactions with the neo4j database.
+
 
     """
-    db = None
+    db = None   # reference to the neo4j driver; initialized in db.init_app
 
-    def find_or_404(self, **kwargs):
-        """Find nodes or 404.
+    def execute(self, query):
+        """Execute `query` on the database and return the  results.
 
-        Wrapper around `find()` to search for records or abort 404 if no
-        records are found.
-
-        """
-        try:
-            return self.find(**kwargs)
-        except NodeNotFound:
-            abort(404, 'No nodes found')
-
-    def find(self, label=None, limit=None, validate=False):
-        """Find nodes
-
-        Return all nodes from the database up to `limit`.
+        This method executes `query` and returns a list of records as a result.
+        The records returned are :class:`neo4j.v1.Record` objects. If no
+        results are returned the list is empty.
 
         Args:
-            :param limit: Integer amount of nodes to limit. The default limit
-                is 25.
+            :param query: Cypher query to execute
 
-        Returns:
-            :return: List of Node objects or an empty list.
+        Raises:
+            CypherError: if query is invalid
 
         """
-        data = []
-        records = None
-        query = 'MATCH (node)\n'
-        if label:
-            query += 'WHERE node:{}\n'.format(label)
-        query += 'RETURN node\n'
-        if limit:
-            query += 'LIMIT {}'.format(limit)
+        with Query.db.session as tx:
+            try:
+                results = tx.run(query)
+            except neo4j.exceptions.CypherSyntaxError as ex:
+                raise CypherError(ex)
+        return [record for record in results]
 
-        logger.debug('Query: {}'.format(query))
-        try:
-            with Query.db.session as session:
-                records = session.run(query)
-        except neo4j.exceptions.CypherSyntaxError as ex:
-            raise CypherError(ex)
+    def search(self, query, single=False):
+        """Execute a search query.
 
-        if not records.peek():  # if no records were returned
-            raise NodeNotFound('No nodes where found')
+        This method executes `query`, but expects one or more results to be
+        returned.
 
-        for record in records:
-            node = Node.node_by_label(record["node"].labels.pop())()
-            node.id = record["node"].id
-            if validate:  # enforce validators; exception if fails
-                for prop, value in record["node"].properties.items():
-                    node.__setattr__(prop, value)
-            else:  # bypass validation; load all properties as node props
-                # need to use update() because we can't assign to __dict__
-                node.__dict__.update(record["node"].properties)
-            data.append(node)
-        return data
+        Args:
+            :param query: query to execute
+            :param single: boolean flag to determine if more than one record
+                should be returned
+        Raises:
+            ResourceNotFound: if no results are found
+
+        """
+        results = self.execute(query)
+        if not results:
+            raise ResourceNotFound('Query returned 0 results')
+        if single:
+            return results[0]
+        return results
+
+    def filter(self, cypher):
+        """Filter and return nodes.
+
+        The filter method is designed to execute a piece of cypher and return
+        :class:`Node` type objects of matching graph nodes.
+
+        Args:
+            :param cypher: Cypher statement to execute
+
+        Returns:
+            :list: Returns a list of unique nodes returned.
+
+        Raises:
+            NodeNotFound: if zero nodes are returned from the query.
+
+        Example::
+
+            results = db.query.filter(
+                "MATCH (post:Post)-[:TAGGED]->(tag:Tag) RETURN post")
+
+        In the example above, `filter` will return a list of :class:`Node` type
+        objects.  If a `Post` model exists, the list will contain `Post` nodes,
+        otherwise the list will container `Node` objects.
+
+        *Note*: If you return more than one type of node, all nodes will be
+        returned; however, there will be no relationship between them.
+
+        """
+        results = self.execute(cypher)
+        if not results:
+            raise NodeNotFound(f'No nodes from query: {cypher}')
+        unique_nodes = set()
+        nodes = []
+        for result in results:  # Get a set of all unique nodes returned
+            for node in result:
+                if isinstance(result[node], neo4j.v1.types.Node):
+                    unique_nodes.add(result[node])
+        for node in unique_nodes:
+            klass = Node.node_by_label(node.labels.pop())  # Find model type
+            obj = klass()
+            # We need to bypass validation
+            obj.__dict__.update(node.properties)
+            obj.__dict__.update({'id': node.id})
+            nodes.append(obj)
+        return nodes
 
 
 def validate(cls):
